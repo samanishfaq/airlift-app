@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "238583567072",
+    "project_id": "airlift-app-66cdc",
+    "storage_bucket": "airlift-app-66cdc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:238583567072:android:f3d605482f52e3b04c3685",
+        "android_client_info": {
+          "package_name": "com.example.airlift"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAcO1owAWpDCgNw4uhA-v-Dg3JgbSVWlRg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
