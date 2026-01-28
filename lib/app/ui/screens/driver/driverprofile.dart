@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:airlift/app/ui/auth/selection_type.dart';
 import 'package:airlift/app/ui/shared/text_widget.dart';
 import 'package:airlift/commons/colors.dart';
 import 'package:airlift/utils/cloudinary.dart';
@@ -121,7 +122,7 @@ class _DriverProfilePageState extends State<DriverProfilePage> {
                   ),
                   onPressed: () async {
                     await FirebaseAuth.instance.signOut();
-                    Get.offAllNamed('/login');
+                    Get.offAll(SelectionType());
                   },
                 )
               ],

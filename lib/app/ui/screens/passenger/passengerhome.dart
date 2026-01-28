@@ -1,6 +1,7 @@
 import 'package:airlift/app/ui/shared/text_widget.dart';
 import 'package:airlift/commons/colors.dart';
 import 'package:airlift/utils/text_field_decoration.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -19,8 +20,6 @@ class _PassengerHomeState extends State<Passengerhome> {
   final destinationCtrl = TextEditingController();
 
   LatLng? destination;
-  final String passengerId = 'passenger1';
-
   bool isBooking = false;
 
   @override
@@ -33,51 +32,57 @@ class _PassengerHomeState extends State<Passengerhome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      resizeToAvoidBottomInset: true,
+      body: Column(
         children: [
-          CustomGoogleMap(
-            destination: destination,
-            showPolyline: destination != null,
-          ),
-
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
-            child: Column(
-              children: [
-                TextField(
-                  controller: pickupCtrl,
-                  decoration: inputDecoration(hintText: "Pickup location"),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: destinationCtrl,
-                  decoration: inputDecoration(hintText: "Destination"),
-                ),
-              ],
+          /// 🗺 MAP (TOP SECTION)
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.45,
+            child: CustomGoogleMap(
+              destination: destination,
+              showPolyline: destination != null,
             ),
           ),
 
-          Positioned(
-            bottom: 20,
-            left: 16,
-            right: 16,
-            child: ElevatedButton(
-              onPressed: isBooking ? null : _bookRide,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: isBooking
-                  ? CircularProgressIndicator(
-                      color: AppColors.textWhite,
-                    )
-                  : const AppText(
-                      text: "Book Now",
-                      color: AppColors.primaryBlue,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+          /// 🧾 FORM (BOTTOM SECTION)
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  TextField(
+                    style: TextStyle(color: AppColors.textWhite),
+                    controller: pickupCtrl,
+                    decoration: inputDecoration(hintText: "Pickup location"),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    style: TextStyle(color: AppColors.textWhite),
+                    controller: destinationCtrl,
+                    decoration: inputDecoration(hintText: "Destination"),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: isBooking ? null : _bookRide,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: isBooking
+                          ? CircularProgressIndicator(
+                              color: AppColors.textWhite,
+                            )
+                          : const AppText(
+                              text: "Book Now",
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                     ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -96,15 +101,29 @@ class _PassengerHomeState extends State<Passengerhome> {
     final pickupLatLng = const LatLng(28.4326, 70.2990);
     final destinationLatLng = const LatLng(28.4526, 70.2990);
 
-    setState(() {
-      destination = destinationLatLng;
-    });
+    setState(() => destination = destinationLatLng);
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        Get.snackbar("Error", "User not logged in");
+        return;
+      }
+
+      // Get passenger info from Firestore
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      final passengerName = doc.data()?['username'] ?? 'Passenger';
+      final passengerPhone = doc.data()?['phone'] ?? '';
+
+      // Add ride to Firestore with passenger info
       await FirebaseFirestore.instance.collection('rides').add({
-        'passengerId': passengerId,
-        'passengerName': 'Passenger Demo',
-        'passengerPhone': '03001234567',
+        'passengerId': user.uid,
+        'passengerName': passengerName,
+        'passengerPhone': passengerPhone,
         'pickup': {
           'lat': pickupLatLng.latitude,
           'lng': pickupLatLng.longitude,
@@ -115,8 +134,8 @@ class _PassengerHomeState extends State<Passengerhome> {
           'lng': destinationLatLng.longitude,
           'name': destinationCtrl.text,
         },
-        'status': 'pending',
-        'driverId': '',
+        'status': 'requested',
+        'driverId': null,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
@@ -125,6 +144,10 @@ class _PassengerHomeState extends State<Passengerhome> {
         "Waiting for driver confirmation",
         snackPosition: SnackPosition.BOTTOM,
       );
+
+      pickupCtrl.clear();
+      destinationCtrl.clear();
+      setState(() => destination = null);
     } catch (e) {
       Get.snackbar("Error", "Failed to request ride");
     } finally {

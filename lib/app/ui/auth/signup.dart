@@ -180,8 +180,9 @@ class _SignupPageState extends State<SignupPage> {
                               onTap: () async {
                                 final file =
                                     await authController.pickDocument();
-                                if (file != null)
+                                if (file != null) {
                                   authController.licenseDoc.value = file;
+                                }
                               },
                             )),
                         const SizedBox(height: 16),
@@ -191,8 +192,9 @@ class _SignupPageState extends State<SignupPage> {
                               onTap: () async {
                                 final file =
                                     await authController.pickDocument();
-                                if (file != null)
+                                if (file != null) {
                                   authController.vehicleRegDoc.value = file;
+                                }
                               },
                             )),
                       ],

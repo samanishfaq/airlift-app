@@ -1,5 +1,6 @@
 import 'package:airlift/app/controllers/auth_controller.dart';
 import 'package:airlift/app/controllers/passengerprofilecontroller.dart';
+import 'package:airlift/app/ui/auth/selection_type.dart';
 import 'package:airlift/app/ui/shared/text_widget.dart';
 import 'package:airlift/commons/colors.dart';
 import 'package:flutter/material.dart';
@@ -97,16 +98,20 @@ class _PassengerprofileState extends State<Passengerprofile> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                      onPressed: () {
-                        Get.find<AuthController>().logout();
-                      },
-                      child: AppText(
-                        text: "Log Out",
-                        color: AppColors.primaryBlue,
-                        isHeading: true,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      )),
+                    onPressed: () async {
+                      // 1. Log out user
+                      await Get.find<AuthController>().logout();
+
+                      Get.offAll(SelectionType());
+                    },
+                    child: AppText(
+                      text: "Log Out",
+                      color: AppColors.primaryBlue,
+                      isHeading: true,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 )
               ],
             ),

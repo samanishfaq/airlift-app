@@ -8,7 +8,7 @@ import 'package:airlift/commons/validator.dart';
 import 'package:airlift/utils/text_field_decoration.dart';
 
 class LoginPage extends StatefulWidget {
-  final String userType;
+  final String userType; // passenger / driver / admin
   const LoginPage({super.key, required this.userType});
 
   @override
@@ -137,33 +137,35 @@ class _LoginPageState extends State<LoginPage> {
                         )),
                     const SizedBox(height: 25),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                            color: Colors.grey[600],
-                            thickness: 0.5,
+                    // OR Divider
+                    if (widget.userType != 'admin')
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey[600],
+                              thickness: 0.5,
+                            ),
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: AppText(
-                            text: 'OR',
-                            color: Colors.grey[400]!,
-                            fontSize: 14,
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: AppText(
+                              text: 'OR',
+                              color: Colors.grey[400]!,
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                            color: Colors.grey[600],
-                            thickness: 0.5,
+                          Expanded(
+                            child: Divider(
+                              color: Colors.grey[600],
+                              thickness: 0.5,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                     const SizedBox(height: 25),
 
-                    // Sign Up Link
+                    // Sign Up Link (Not for admin)
                     if (widget.userType == 'driver' ||
                         widget.userType == 'passenger')
                       Row(
@@ -235,7 +237,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _handleLogin() async {
     if (authController.loginFormKey.currentState!.validate()) {
-      // Use the updated login method
       await authController.login(widget.userType);
     } else {
       Get.snackbar(

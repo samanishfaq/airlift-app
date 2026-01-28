@@ -67,7 +67,7 @@ class AuthRepository {
       throw ('failedToLoadData'.tr);
     } on HttpException catch (_) {
       throw ('checkInternetConnection'.tr);
-    } catch (error, s) {
+    } catch (error) {
       rethrow;
     }
   }

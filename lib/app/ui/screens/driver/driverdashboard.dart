@@ -9,10 +9,10 @@ import 'package:get/get.dart';
 class DriverDashboard extends StatelessWidget {
   DriverDashboard({super.key});
 
-  final controller =
+  final DriverDashboardController controller =
       Get.put(DriverDashboardController(), permanent: true);
 
-  final pages = const [
+  final List<Widget> pages = const [
     Driverhome(),
     RideRequestsPage(),
     DriverProfilePage(),
@@ -31,14 +31,21 @@ class DriverDashboard extends StatelessWidget {
           unselectedItemColor: AppColors.bgDark,
           items: const [
             BottomNavigationBarItem(
-                icon: Icon(Icons.home), label: 'Home'),
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.directions_car), label: 'Requests'),
+              icon: Icon(Icons.directions_car),
+              label: 'Requests',
+            ),
             BottomNavigationBarItem(
-                icon: Icon(Icons.person), label: 'Profile'),
+              icon: Icon(Icons.person),
+              label: 'Profile',
+            ),
           ],
         ),
       );
     });
   }
 }
+

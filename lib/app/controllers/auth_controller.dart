@@ -1,16 +1,16 @@
 import 'dart:io';
-import 'package:airlift/app/ui/screens/driver/driverdashboard.dart';
-import 'package:airlift/app/ui/screens/driver/driverhome.dart';
-import 'package:airlift/app/ui/screens/passenger/passengerdashboard.dart';
+import 'package:airlift/utils/cloudinary.dart';
+import 'package:airlift/utils/getx_snackbar.dart';
+import 'package:airlift/utils/logger.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:image_picker/image_picker.dart';
-import '../../utils/cloudinary.dart';
-import '../../utils/getx_snackbar.dart';
-import '../../utils/logger.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:airlift/app/ui/screens/driver/driverdashboard.dart';
+import 'package:airlift/app/ui/screens/passenger/passengerdashboard.dart';
+import 'package:airlift/app/ui/screens/admin/admindashboard.dart';
 
 class AuthController extends GetxController {
   // Firebase & Storage
@@ -22,7 +22,7 @@ class AuthController extends GetxController {
   final RxBool isLoadingLogin = false.obs;
   final RxBool isLoadingSignup = false.obs;
   final RxBool isPasswordVisible = false.obs;
-  final RxString userType = ''.obs;
+  final RxString userType = ''.obs; // passenger / driver / admin
   final Rx<User?> currentUser = Rx<User?>(null);
 
   // Form keys
@@ -42,8 +42,6 @@ class AuthController extends GetxController {
   final Rx<File?> licenseDoc = Rx<File?>(null);
   final Rx<File?> vehicleRegDoc = Rx<File?>(null);
 
-  final ImagePicker _picker = ImagePicker();
-
   // ---------------- UTILITIES ----------------
   void togglePasswordVisibility() =>
       isPasswordVisible.value = !isPasswordVisible.value;
@@ -60,11 +58,17 @@ class AuthController extends GetxController {
     vehicleRegDoc.value = null;
   }
 
+  /// Pick PDF document only
   Future<File?> pickDocument() async {
     try {
-      final XFile? pickedFile =
-          await _picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile != null) return File(pickedFile.path);
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        return File(result.files.single.path!);
+      }
     } catch (e) {
       Logger.error('Error picking document: $e');
       Snack.showErrorSnackBar('Failed to pick document');
@@ -92,6 +96,43 @@ class AuthController extends GetxController {
     }
 
     try {
+      if (type == 'admin') {
+        await _loginAdmin(
+            emailController.text.trim(), passwordController.text.trim());
+      } else {
+        await _loginUser(type);
+      }
+    } finally {
+      isLoadingLogin.value = false;
+    }
+  }
+
+  // ---------------- ADMIN LOGIN ----------------
+  Future<void> _loginAdmin(String email, String password) async {
+    try {
+      final adminQuery = await _firestore
+          .collection('admins')
+          .where('email', isEqualTo: email)
+          .where('password', isEqualTo: password) // plaintext for testing
+          .get();
+
+      if (adminQuery.docs.isEmpty) {
+        Snack.showErrorSnackBar("Invalid admin credentials");
+        return;
+      }
+
+      userType.value = 'admin';
+      Snack.showSuccessSnackBar("Admin login successful");
+      clearFormData();
+      Get.offAll(() => AdminDashboard());
+    } catch (e) {
+      Snack.showErrorSnackBar("Error logging in admin: $e");
+    }
+  }
+
+  // ---------------- DRIVER / PASSENGER LOGIN ----------------
+  Future<void> _loginUser(String type) async {
+    try {
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
         password: passwordController.text.trim(),
@@ -106,21 +147,12 @@ class AuthController extends GetxController {
         return;
       }
 
-      // await _storage.writeAll({
-      //   'userId': user.uid,
-      //   'userType': type,
-      //   'userEmail': emailController.text.trim(),
-      //   'isLoggedIn': true,
-      // });
-
       clearFormData();
       currentUser.value = user;
       Snack.showSuccessSnackBar('Login successful');
       _navigateAfterLogin(type);
     } on FirebaseAuthException catch (e) {
       _handleAuthError(e);
-    } finally {
-      isLoadingLogin.value = false;
     }
   }
 
@@ -135,9 +167,10 @@ class AuthController extends GetxController {
     }
 
     try {
+      // Ensure driver documents are uploaded
       if (type == 'driver' &&
           (licenseDoc.value == null || vehicleRegDoc.value == null)) {
-        Snack.showErrorSnackBar("Upload all required documents");
+        Snack.showErrorSnackBar("Upload all required PDF documents");
         isLoadingSignup.value = false;
         return;
       }
@@ -170,23 +203,16 @@ class AuthController extends GetxController {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // await _storage.writeAll({
-      //   'userId': user.uid,
-      //   'userType': type,
-      //   'userEmail': emailController.text.trim(),
-      //   'isLoggedIn': true,
-      // });
-
       clearFormData();
       currentUser.value = user;
       Snack.showSuccessSnackBar('Account created successfully!');
       _navigateAfterLogin(type);
     } on FirebaseAuthException catch (e) {
-      String message = e.code == 'email-already-in-use'
-          ? 'Email already in use'
-          : e.code == 'weak-password'
-              ? 'Weak password'
-              : e.message ?? 'Sign up failed';
+      String message = switch (e.code) {
+        'email-already-in-use' => 'Email already in use',
+        'weak-password' => 'Weak password',
+        _ => e.message ?? 'Sign up failed',
+      };
       Snack.showErrorSnackBar(message);
     } finally {
       isLoadingSignup.value = false;
@@ -200,7 +226,7 @@ class AuthController extends GetxController {
       await _storage.erase();
       currentUser.value = null;
       userType.value = '';
-      Get.offAllNamed('/login-select');
+      Get.offAllNamed('/login-select'); // go to type selection screen
     } catch (e) {
       Logger.error('Logout failed: $e');
       Snack.showErrorSnackBar('Logout failed');
@@ -215,6 +241,9 @@ class AuthController extends GetxController {
         break;
       case 'driver':
         Get.offAll(() => DriverDashboard());
+        break;
+      case 'admin':
+        Get.offAll(() => AdminDashboard());
         break;
       default:
         Get.offAllNamed('/home');
